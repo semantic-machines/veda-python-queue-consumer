@@ -7,6 +7,10 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyBytes;
 
+// Import from external library
+use v_individual_model::onto::individual::{Individual, RawObj};
+use v_individual_model::onto::parser::parse_raw;
+
 #[pymodule]
 fn vqueue(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyQueue>()?;
@@ -159,6 +163,34 @@ impl PyConsumer {
                 }
             }
         }
+    }
+    
+    /// Converts binary data in Individual format to JSON string
+    /// This is a static method that can be used independently of queue operations
+    #[staticmethod]
+    fn convert_individual_to_json(_py: Python, binary_data: &PyBytes) -> PyResult<String> {
+        let bytes = binary_data.as_bytes();
+        
+        // Create Individual from binary data
+        let raw = RawObj::new(bytes.to_vec());
+        let mut individual = Individual::new_raw(raw);
+        
+        // Parse the raw data (initial parsing)
+        if let Err(_) = parse_raw(&mut individual) {
+            return Err(PyValueError::new_err("Failed to parse binary data to Individual"));
+        }
+        
+        // Fully parse all predicates and resources (Individual uses lazy parsing)
+        individual.parse_all();
+        
+        // Convert Individual to JSON
+        let json_str = individual.get_obj().as_json_str();
+        
+        if json_str.is_empty() {
+            return Err(PyValueError::new_err("Failed to convert Individual to JSON"));
+        }
+        
+        Ok(json_str)
     }
 
     fn commit(&mut self) -> bool {

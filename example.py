@@ -1,6 +1,7 @@
 from vqueue import Queue, Consumer, Mode, MsgType
 import tempfile
 import os
+import json
 
 def test_queue_consumer_interaction():
     # Create a temporary directory for the queue
@@ -149,9 +150,112 @@ def test_queue_parts():
         
         print("Queue parts test completed successfully!")
 
+def test_individual_to_json_conversion():
+    print("\nTesting Individual to JSON conversion...")
+    
+    with tempfile.TemporaryDirectory() as base_path:
+        queue_name = "individual_queue"
+        
+        # Create a queue
+        queue = Queue(base_path, queue_name, Mode.READ_WRITE)
+        
+        # Sample data that represents a serialized Individual
+        # In a real application, this would be created by a Rust program using the Individual model
+        individual_data = b'''
+        {
+          "@": "example:person1",
+          "rdf:type": [{"data": "Person", "type": "Uri"}],
+          "name": [{"data": "John Doe", "type": "String"}],
+          "age": [{"data": 30, "type": "Integer"}],
+          "active": [{"data": true, "type": "Boolean"}]
+        }
+        '''
+        
+        # Push the Individual data to the queue
+        queue.push(individual_data, MsgType.OBJECT)
+        print("Pushed Individual data to queue")
+        
+        # Create a consumer
+        consumer = Consumer(base_path, "individual_consumer", queue_name)
+        
+        # Read the message and convert to JSON
+        if consumer.pop_header():
+            binary_data = consumer.pop_body()
+            if binary_data is not None:
+                print(f"Received binary data, length: {len(binary_data)} bytes")
+                
+                try:
+                    # Convert binary data to JSON using the static method
+                    json_str = Consumer.convert_individual_to_json(binary_data)
+                    print("Successfully converted Individual to JSON")
+                    
+                    # Parse JSON to Python object
+                    data = json.loads(json_str)
+                    
+                    # Verify the content
+                    assert "@" in data, "Missing URI in converted data"
+                    assert data["@"] == "example:person1", "URI doesn't match expected value"
+                    assert "name" in data, "Missing 'name' predicate"
+                    assert "age" in data, "Missing 'age' predicate"
+                    assert "active" in data, "Missing 'active' predicate"
+                    
+                    # Print Individual structure
+                    print(f"Individual URI: {data['@']}")
+                    for predicate, values in data.items():
+                        if predicate != '@':
+                            print(f"Predicate: {predicate}, Values: {values}")
+                    
+                    consumer.commit()
+                    print("Individual conversion test passed")
+                    
+                except Exception as e:
+                    print(f"Error converting to JSON: {e}")
+                    assert False, f"JSON conversion failed: {e}"
+            else:
+                assert False, "Failed to read message body"
+        else:
+            assert False, "Failed to read message header"
+        
+    # Test direct conversion without using a queue
+    print("\nTesting direct conversion of binary data...")
+    
+    # This could be binary data from any source
+    direct_binary_data = b'''
+    {
+      "@": "example:direct1",
+      "rdf:type": [{"data": "DirectTest", "type": "Uri"}],
+      "description": [{"data": "Test of direct conversion", "type": "String"}],
+      "value": [{"data": 42, "type": "Integer"}]
+    }
+    '''
+    
+    try:
+        # Convert directly without going through the queue
+        json_str = Consumer.convert_individual_to_json(direct_binary_data)
+        print("Successfully converted direct binary data to JSON")
+        
+        # Parse the JSON
+        data = json.loads(json_str)
+        
+        # Verify the content
+        assert "@" in data, "Missing URI in directly converted data"
+        assert data["@"] == "example:direct1", "URI doesn't match expected value"
+        assert "description" in data, "Missing 'description' predicate"
+        assert "value" in data, "Missing 'value' predicate"
+        
+        print(f"Direct Individual URI: {data['@']}")
+        print(f"Found {len(data) - 1} predicates")  # -1 for the '@' field
+        print("Direct conversion test passed")
+        
+    except Exception as e:
+        print(f"Error in direct conversion: {e}")
+        assert False, f"Direct JSON conversion failed: {e}"
+
 if __name__ == "__main__":
     test_queue_consumer_interaction()
     print("\n---\n")
     test_multiple_consumers()
     print("\n---\n")
     test_queue_parts()
+    print("\n---\n")
+    test_individual_to_json_conversion()
