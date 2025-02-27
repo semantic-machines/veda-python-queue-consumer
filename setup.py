@@ -4,7 +4,7 @@ import os
 import sys
 
 # Добавляем версию в одном месте для удобного обновления
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 PACKAGE_NAME = "v-queue-python"
 
 setup(

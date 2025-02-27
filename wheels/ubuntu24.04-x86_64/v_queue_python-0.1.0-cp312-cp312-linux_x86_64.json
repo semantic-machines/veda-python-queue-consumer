@@ -1,0 +1,24 @@
+{
+  "wheel_file": "v_queue_python-0.1.0-cp312-cp312-linux_x86_64.whl",
+  "system_info": {
+    "platform": {
+      "system": "Linux",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "architecture": "64bit",
+      "distribution": "Ubuntu 24.04.2 LTS",
+      "distro_id": "ubuntu",
+      "distro_version": "24.04",
+      "distro_codename": "noble",
+      "glibc_version": "2.39-0ubuntu8.4)",
+      "gcc_version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0"
+    },
+    "python": {
+      "implementation": "CPython",
+      "version": "3.12.3",
+      "compiler": "GCC 13.3.0"
+    },
+    "build_date": "2025-02-26 22:55:07",
+    "rust": "rustc 1.75.0 (82e1608df 2023-12-21)"
+  }
+}
