@@ -1,11 +1,11 @@
-Wheel file: v_queue_python-0.1.1-cp312-cp312-linux_x86_64.whl
-Build date: 2025-02-26 22:58:27
+Wheel file: v_queue_python-0.1.2-cp312-cp312-linux_x86_64.whl
+Build date: 2025-04-15 16:12:43
 System: Linux
 Architecture: x86_64 (64bit)
 Distribution: Ubuntu 24.04.2 LTS
 Version: 24.04
 Codename: noble
 Python: CPython 3.12.3
-Rust: rustc 1.75.0 (82e1608df 2023-12-21)
+Rust: rustc 1.85.0 (4d91de4e4 2025-02-17)
 glibc: 2.39-0ubuntu8.4)
 GCC: gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0

@@ -41,7 +41,7 @@ wheels/
 pip install setuptools wheel setuptools-rust
 
 # Запустите скрипт сборки
-python build_wheel.py
+python build-wheel.py
 ```
 
 Скрипт автоматически:
@@ -61,7 +61,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Установите wheel-файл для вашей платформы
-pip install wheels/ubuntu24.04-x86_64/v_queue_python-0.1.0-cp310-cp310-linux_x86_64.whl
+pip install wheels/ubuntu24.04-x86_64/v_queue_python-0.1.2-cp310-cp310-linux_x86_64.whl
 ```
 
 ### Вариант 2: Использование в requirements.txt

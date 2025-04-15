@@ -6,19 +6,11 @@ use v_queue::record::Mode;
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyBytes;
+use pyo3::PyObject;
 
 // Import from external library
 use v_individual_model::onto::individual::{Individual, RawObj};
 use v_individual_model::onto::parser::parse_raw;
-
-#[pymodule]
-fn vqueue(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<PyQueue>()?;
-    m.add_class::<PyConsumer>()?;
-    m.add_class::<PyMode>()?;
-    m.add_class::<PyMsgType>()?;
-    Ok(())
-}
 
 #[pyclass(name = "Mode")]
 #[derive(Clone, Copy)]
@@ -95,9 +87,11 @@ impl PyQueue {
         }
     }
 
-    fn push(&mut self, data: &PyBytes, msg_type: PyMsgType) -> PyResult<u64> {
-        let bytes = data.as_bytes();
-        match self.inner.push(bytes, msg_type.into()) {
+    fn push(&mut self, py: Python<'_>, data: PyObject, msg_type: PyMsgType) -> PyResult<u64> {
+        // Convert PyObject to bytes
+        let bytes = py_to_bytes(py, data)?;
+
+        match self.inner.push(&bytes, msg_type.into()) {
             Ok(pos) => Ok(pos),
             Err(e) => Err(PyValueError::new_err(e.as_str().to_string())),
         }
@@ -146,7 +140,7 @@ impl PyConsumer {
         self.inner.pop_header()
     }
 
-    fn pop_body(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn pop_body(&mut self, py: Python<'_>) -> PyResult<Option<PyObject>> {
         let msg_size = self.inner.header.msg_length as usize;
         let mut buffer = vec![0u8; msg_size];
 
@@ -164,32 +158,33 @@ impl PyConsumer {
             }
         }
     }
-    
+
     /// Converts binary data in Individual format to JSON string
     /// This is a static method that can be used independently of queue operations
     #[staticmethod]
-    fn convert_individual_to_json(_py: Python, binary_data: &PyBytes) -> PyResult<String> {
-        let bytes = binary_data.as_bytes();
-        
+    fn convert_individual_to_json(py: Python<'_>, binary_data: PyObject) -> PyResult<String> {
+        // Convert PyObject to bytes
+        let bytes = py_to_bytes(py, binary_data)?;
+
         // Create Individual from binary data
-        let raw = RawObj::new(bytes.to_vec());
+        let raw = RawObj::new(bytes);
         let mut individual = Individual::new_raw(raw);
-        
+
         // Parse the raw data (initial parsing)
         if let Err(_) = parse_raw(&mut individual) {
             return Err(PyValueError::new_err("Failed to parse binary data to Individual"));
         }
-        
+
         // Fully parse all predicates and resources (Individual uses lazy parsing)
         individual.parse_all();
-        
+
         // Convert Individual to JSON
         let json_str = individual.get_obj().as_json_str();
-        
+
         if json_str.is_empty() {
             return Err(PyValueError::new_err("Failed to convert Individual to JSON"));
         }
-        
+
         Ok(json_str)
     }
 
@@ -210,4 +205,28 @@ impl PyConsumer {
     fn name(&self) -> String {
         self.inner.name.clone()
     }
+}
+
+/// Helper function to convert PyObject to Vec<u8>
+fn py_to_bytes(py: Python<'_>, obj: PyObject) -> PyResult<Vec<u8>> {
+    // Try to downcast to PyBytes
+    if let Ok(bytes) = obj.downcast_bound::<PyBytes>(py) {
+        let len = unsafe { pyo3::ffi::PyBytes_Size(bytes.as_ptr()) as usize };
+        let data = unsafe { pyo3::ffi::PyBytes_AsString(bytes.as_ptr()) as *const u8 };
+        let bytes_slice = unsafe { std::slice::from_raw_parts(data, len) };
+        Ok(bytes_slice.to_vec())
+    } else {
+        Err(PyValueError::new_err("Expected bytes object"))
+    }
+}
+
+/// Python module initialization
+#[pymodule]
+fn vqueue(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Add classes to the module
+    m.add("Queue", py.get_type::<PyQueue>())?;
+    m.add("Consumer", py.get_type::<PyConsumer>())?;
+    m.add("Mode", py.get_type::<PyMode>())?;
+    m.add("MsgType", py.get_type::<PyMsgType>())?;
+    Ok(())
 }
